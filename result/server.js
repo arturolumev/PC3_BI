@@ -9,9 +9,7 @@ var express = require('express'),
 var port = process.env.PORT || 4000;
 
 io.on('connection', function (socket) {
-
-  socket.emit('message', { text : 'Welcome!' });
-
+  socket.emit('message', { text: 'Welcome!' });
   socket.on('subscribe', function (data) {
     socket.join(data.channel);
   });
@@ -22,45 +20,37 @@ var pool = new Pool({
 });
 
 async.retry(
-  {times: 1000, interval: 1000},
-  function(callback) {
-    pool.connect(function(err, client, done) {
+  { times: 1000, interval: 1000 },
+  function (callback) {
+    pool.connect(function (err, client, done) {
       if (err) {
         console.error("Waiting for db");
       }
       callback(err, client);
     });
   },
-  function(err, client) {
+  function (err, client) {
     if (err) {
       return console.error("Giving up");
     }
     console.log("Connected to db");
-    getVotes(client);
+    getDistances(client);
   }
 );
 
-function getVotes(client) {
-  client.query('SELECT vote, COUNT(id) AS count FROM votes GROUP BY vote', [], function(err, result) {
+function getDistances(client) {
+  client.query('SELECT id, distancia_manhattan FROM votes ORDER BY id DESC LIMIT 1', [], function (err, result) {
     if (err) {
       console.error("Error performing query: " + err);
     } else {
-      var votes = collectVotesFromResult(result);
-      io.sockets.emit("scores", JSON.stringify(votes));
+      var distances = result.rows[0] || { id: 0, distancia_manhattan: 0 };
+      io.sockets.emit("distances", JSON.stringify(distances));
     }
 
-    setTimeout(function() {getVotes(client) }, 1000);
+    setTimeout(function () {
+      getDistances(client);
+    }, 1000);
   });
-}
-
-function collectVotesFromResult(result) {
-  var votes = {a: 0, b: 0};
-
-  result.rows.forEach(function (row) {
-    votes[row.vote] = parseInt(row.count);
-  });
-
-  return votes;
 }
 
 app.use(cookieParser());
