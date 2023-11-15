@@ -39,11 +39,11 @@ async.retry(
 );
 
 function getDistances(client) {
-  client.query('SELECT id, distancia_manhattan FROM votes ORDER BY id DESC LIMIT 1', [], function (err, result) {
+  client.query('SELECT id, distancia_manhattan, distancia_pearson FROM votes ORDER BY id DESC LIMIT 1', [], function (err, result) {
     if (err) {
       console.error("Error performing query: " + err);
     } else {
-      var distances = result.rows[0] || { id: 0, distancia_manhattan: 0 };
+      var distances = result.rows[0] || { id: 0, distancia_manhattan: 0, distancia_person: 0 };
       io.sockets.emit("distances", JSON.stringify(distances));
     }
 

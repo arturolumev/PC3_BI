@@ -7,6 +7,10 @@ import random
 import json
 import logging
 
+import csv
+from math import sqrt
+from builtins import zip
+
 option_a = os.getenv('OPTION_A', "Persona 1")
 option_b = os.getenv('OPTION_B', "Persona 2")
 hostname = socket.gethostname()
@@ -79,45 +83,82 @@ def recommend(username, users):
 result = recommend('Hailey', users)
 
 ################################################################
-'''
-@app.route("/", methods=['POST','GET'])
-def hello():
-    #voter_id = request.cookies.get('voter_id')
-    
-    #if not voter_id:
-    #    voter_id = hex(random.getrandbits(64))[2:-1]
 
-    #vote = None
+################################################################
+# USANDO CSV
 
-    if request.method == 'POST':
-        redis = get_redis()
-        #vote = request.form['vote']
-        #app.logger.info('Received vote for %s', vote)
-        app.logger.info('Recomendaciones Manhattan %s', result)
-        app.logger.info('TIPO %s', type(result))
-        #data = json.dumps({'voter_id': voter_id, 'vote': vote, 'result': result}) # ENVIO DE RESULT A REDIS
-        data = json.dumps({'result': result}) # ENVIO DE RESULT A REDIS
-        app.logger.info('TIPO DATA%s', type(data))
-        redis.rpush('result', data)
-        print("--------------------------------------------------------------------")
-        print("Se enviaron los datos a REDIS")
+def load_users_from_csv(filename):
+    users = {}
+    with open(filename, 'r') as file:
+        csv_reader = csv.DictReader(file)
 
-    resp = make_response(render_template(
-        'index.html',
-        option_a=option_a,
-        option_b=option_b,
-        hostname=hostname,
-        #vote=vote,
-        result=result,
-    ))
-    #resp.set_cookie('voter_id', voter_id)
-    return resp
-'''
+        for row in csv_reader:
+            userId = row['userId']
+            movieId = row['movieId']
+            rating = float(row['rating'])
+            
+            if userId not in users:
+                users[userId] = {}
+            users[userId][movieId] = rating
+
+    return users
+
+# Cargar los usuarios desde el archivo CSV
+users2 = load_users_from_csv('ratings.csv')
+
+def pearson_correlation(rating1, rating2):
+    """Computes the Pearson correlation. Both rating1 and rating2 are dictionaries
+       of the form {'The Strokes': 3.0, 'Slightly Stoopid': 2.5}"""
+    numerator = 0
+    sum_rating1 = 0
+    sum_rating2 = 0
+    sum_sq_rating1 = 0
+    sum_sq_rating2 = 0
+    n = 0
+    for key in rating1:
+        if key in rating2:
+            n += 1
+            numerator += (rating1[key] - sum(rating1.values()) / n) * (rating2[key] - sum(rating2.values()) / n)
+            sum_rating1 += rating1[key]
+            sum_rating2 += rating2[key]
+            sum_sq_rating1 += rating1[key] ** 2
+            sum_sq_rating2 += rating2[key] ** 2
+    denominator = sqrt((sum_sq_rating1 - sum_rating1 ** 2 / n) * (sum_sq_rating2 - sum_rating2 ** 2 / n))
+    if not denominator:
+        return 0.0
+    else:
+        return numerator / denominator
+
+def computeNearestNeighbor(username, users):
+    """creates a sorted list of users based on their distance to username"""
+    distances = []
+    for user in users:
+        if user != username:
+            distance = pearson_correlation(users[user], users[username])
+            distances.append((distance, user))
+    # sort based on distance -- closest first
+    distances.sort(reverse=True)
+    return distances
+
+def recommend(username, users):
+    """Give list of recommendations"""
+    # first find nearest neighbor
+    nearest = computeNearestNeighbor(username, users)[1:6]
+
+    print(f"Los 5 vecinos más cercanos a {username} son:")
+    for neighbor in nearest:
+        print(neighbor[1])
+
+# Ejemplo de uso
+#print(users)
+print(pearson_correlation(users2['1'], users2['5']))
+
+################################################################
 
 @app.route("/", methods=['POST','GET'])
 def distancias():
-    distancia_manhattan = manhattan(users['Angelica'], users["Bill"])
-    distancia_pearson = manhattan(users['Angelica'], users["Bill"])
+    #distancia_manhattan = manhattan(users['Angelica'], users["Bill"])
+    distancia_pearson = pearson_correlation(users2['1'], users2['5'])
     voter_id = request.cookies.get('voter_id')
     if not voter_id:
         voter_id = hex(random.getrandbits(64))[2:-1]
@@ -126,8 +167,8 @@ def distancias():
         redis = get_redis()
         user_1 = request.form['option_a']
         user_2 = request.form['option_b']
-        #distancia_pearson = str(pearson(users[user_1], users[user_2]))
         distancia_manhattan = str(manhattan(users[user_1], users[user_2])) 
+        #distancia_pearson = str(pearson(users[user_1], users[user_2]))
         data = json.dumps({'voter_id': voter_id,'distancia_manhattan': distancia_manhattan, 'distancia_pearson': distancia_pearson})
         #data = json.dumps({'voter_id': voter_id, 'distancia_manhattan': distancia_manhattan})
         redis.rpush('distancias', data)
