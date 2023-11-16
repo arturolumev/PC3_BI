@@ -7,9 +7,17 @@ import random
 import json
 import logging
 
+#### PC2 DAEA
 import csv
 from math import sqrt
 from builtins import zip
+
+#### PC 3 BI
+import fileinput
+import os
+import numpy as np
+import pandas as pd
+from scipy.spatial.distance import cityblock
 
 option_a = os.getenv('OPTION_A', "Persona 1")
 option_b = os.getenv('OPTION_B', "Persona 2")
@@ -152,6 +160,118 @@ def recommend(username, users):
 # Ejemplo de uso
 #print(users)
 print(pearson_correlation(users2['1'], users2['5']))
+
+################################################################
+
+################################################################
+# EVALUACION 3 BI
+
+# Ruta al archivo que quieres modificar
+archivo = '/ml-10M100K/ratings.dat'
+
+# Iterar sobre cada línea del archivo
+with fileinput.FileInput(archivo, inplace=True, backup='.bak') as file:
+    for line in file:
+        # Reemplazar '::' por '\t' en cada línea
+        print(line.replace('::', '\t'), end='')
+        
+# Convert MovieLens data to binary using numpy_to_binary function
+def movie_lens_to_binary(input_file, output_file):
+    # Load MovieLens data using Pandas
+    ratings = pd.read_csv(input_file, sep='\t', header=None,
+                          names=['userId', 'movieId', 'rating', 'rating_timestamp'])
+    # Convert to NumPy array
+    np_data = np.array(ratings[['userId', 'movieId', 'rating']])
+    # Write to binary file
+    with open(output_file, "wb") as bin_file:
+        bin_file.write(np_data.astype(np.int32).tobytes())
+movie_lens_to_binary('/content/ml-10M100K/ratings.dat', 'output_binary.bin')
+
+def binary_to_pandas(bin_file, num_rows=10):
+    # Read binary data into NumPy array
+    with open(bin_file, 'rb') as f:
+        binary_data = f.read()
+
+    # Convert binary data back to NumPy array
+    np_data = np.frombuffer(binary_data, dtype=np.int32).reshape(-1, 3)  # Assuming 3 columns
+
+    # Convert NumPy array to Pandas DataFrame
+    df = pd.DataFrame(np_data, columns=['userId', 'movieId', 'rating'])
+
+    # Display the equivalent of ratings.head(10)
+    print(df.head(num_rows))
+
+# Usage
+binary_to_pandas('output_binary.bin', num_rows=10)
+
+def binary_to_pandas_with_stats(bin_file, num_rows=10):
+    # Read binary data into NumPy array
+    with open(bin_file, 'rb') as f:
+        binary_data = f.read()
+    # Convert binary data back to NumPy array
+    np_data = np.frombuffer(binary_data, dtype=np.int32).reshape(-1, 3)  # Assuming 3 columns
+    # Convert NumPy array to Pandas DataFrame
+    df = pd.DataFrame(np_data, columns=['userId', 'movieId', 'rating'])
+    # Calculate max and min values for 'userId'
+    userId_max = df['userId'].max()
+    userId_min = df['userId'].min()
+    num_rows_df = len(df.index)
+    return userId_max, userId_min, num_rows_df
+# Usage
+userId_max, userId_min, num_rows_df = binary_to_pandas_with_stats('output_binary.bin', num_rows=10)
+
+print(f"Maximum userId: {userId_max}")
+print(f"Minimum userId: {userId_min}")
+print(f"Number of rows: {num_rows_df}")
+
+#16 seg
+import numpy as np
+import pandas as pd
+
+def binary_to_pandas_with_stats(bin_file, num_rows=10):
+    # Read binary data into NumPy array
+    with open(bin_file, 'rb') as f:
+        binary_data = f.read()
+    # Convert binary data back to NumPy array
+    np_data = np.frombuffer(binary_data, dtype=np.int32).reshape(-1, 3)  # Assuming 3 columns
+    # Convert NumPy array to Pandas DataFrame
+    df = pd.DataFrame(np_data, columns=['userId', 'movieId', 'rating'])
+    return df
+def consolidate_data(df):
+    # Group by 'userId' and 'movieId' and calculate the mean of 'rating'
+    consolidated_df = df.groupby(['userId', 'movieId'])['rating'].mean().unstack()
+    return consolidated_df
+df = binary_to_pandas_with_stats('output_binary.bin', num_rows=10)
+
+# Consolidate data
+consolidated_df = consolidate_data(df)
+print("Consolidated data:")
+print(consolidated_df)
+
+#it takes 32 seconds
+#comparate
+
+
+def computeNearestNeighbor(dataframe, target_user, distance_metric=cityblock):
+    distances = np.zeros(len(dataframe))  # Initialize a NumPy array
+    # Iterate over each row (user) in the DataFrame
+    for i, (index, row) in enumerate(dataframe.iterrows()):
+        if index == target_user:
+            continue  # Skip the target user itself
+        # Calculate the distance between the target user and the current user
+        distance = distance_metric(dataframe.loc[target_user].fillna(0), row.fillna(0))
+        distances[i] = distance
+    # Get the indices that would sort the array, and then sort the distances accordingly
+    sorted_indices = np.argsort(distances)
+    sorted_distances = distances[sorted_indices]
+    return list(zip(dataframe.index[sorted_indices], sorted_distances))
+# Example usage
+# Assuming your DataFrame is named 'ratings_df'
+target_user_id = 1
+neighbors = computeNearestNeighbor(consolidated_df, target_user_id)
+# Print the nearest neighbors and their distances
+print("Nearest Neighbors for User {}: {}".format(target_user_id, neighbors))
+
 
 ################################################################
 
