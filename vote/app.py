@@ -167,15 +167,30 @@ print(pearson_correlation(users2['1'], users2['5']))
 # EVALUACION 3 BI
 
 # Ruta al archivo que quieres modificar
-archivo = '/ml-10M100K/ratings.dat'
+archivo = 'ml-10M100K/ratings.dat'
 
-# Iterar sobre cada línea del archivo
-with fileinput.FileInput(archivo, inplace=True, backup='.bak') as file:
-    for line in file:
-        # Reemplazar '::' por '\t' en cada línea
-        print(line.replace('::', '\t'), end='')
-        
+# Leer el contenido del archivo
+with open(archivo, 'r') as file:
+    lines = file.readlines()
+
+# Modificar el contenido reemplazando '::' por '\t'
+modified_lines = [line.replace('::', '\t') for line in lines]
+
+# Sobrescribir el archivo con los cambios
+with open(archivo, 'w') as file:
+    file.writelines(modified_lines)
+
 # Convert MovieLens data to binary using numpy_to_binary function
+def movie_lens_to_binary(input_file, output_file):
+    # Load MovieLens data using Pandas
+    ratings = pd.read_csv(input_file, sep='\t', header=None,
+                          names=['userId', 'movieId', 'rating', 'rating_timestamp'])
+    # Convert to NumPy array
+    np_data = np.array(ratings[['userId', 'movieId', 'rating']])
+    # Write to binary file
+    with open(output_file, "wb") as bin_file:
+        bin_file.write(np_data.astype(np.int32).tobytes())
+movie_lens_to_binary('ml-10M100K/ratings.dat', 'output_binary.bin')
 
 #it takes 32 seconds
 #comparate
@@ -195,7 +210,7 @@ def computeNearestNeighbor(dataframe, target_user, distance_metric=cityblock):
     return list(zip(dataframe.index[sorted_indices], sorted_distances))
 
 def binary_to_pandas_with_stats(bin_file, num_rows=10):
-    # Read binary data into NumPy array
+    # Read binary data into NumPy array using context manager
     with open(bin_file, 'rb') as f:
         binary_data = f.read()
     # Convert binary data back to NumPy array
@@ -203,6 +218,7 @@ def binary_to_pandas_with_stats(bin_file, num_rows=10):
     # Convert NumPy array to Pandas DataFrame
     df = pd.DataFrame(np_data, columns=['userId', 'movieId', 'rating'])
     return df
+
 def consolidate_data(df):
     # Group by 'userId' and 'movieId' and calculate the mean of 'rating'
     consolidated_df = df.groupby(['userId', 'movieId'])['rating'].mean().unstack()
