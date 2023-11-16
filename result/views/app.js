@@ -4,6 +4,7 @@ var socket = io.connect();
 app.controller('statsCtrl', function ($scope) {
   $scope.distanciaManhattan = 0;
   $scope.distanciaPerson = 0;
+  $scope.pc3 = 0;
 
   var updateDistances = function () {
     socket.on('distances', function (json) {
@@ -11,6 +12,7 @@ app.controller('statsCtrl', function ($scope) {
       $scope.$apply(function () {
         $scope.distanciaManhattan = data.distancia_manhattan;
         $scope.distanciaPerson = data.distancia_pearson;
+        $scope.pc3 = data.pc3;
       });
     });
   };

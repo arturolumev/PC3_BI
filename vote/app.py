@@ -270,7 +270,8 @@ def computeNearestNeighbor(dataframe, target_user, distance_metric=cityblock):
 target_user_id = 1
 neighbors = computeNearestNeighbor(consolidated_df, target_user_id)
 # Print the nearest neighbors and their distances
-print("Nearest Neighbors for User {}: {}".format(target_user_id, neighbors))
+
+print(neighbors[0][0])
 
 
 ################################################################
@@ -279,6 +280,7 @@ print("Nearest Neighbors for User {}: {}".format(target_user_id, neighbors))
 def distancias():
     #distancia_manhattan = manhattan(users['Angelica'], users["Bill"])
     distancia_pearson = pearson_correlation(users2['1'], users2['5'])
+    pc3 = neighbors[0][0]
     voter_id = request.cookies.get('voter_id')
     if not voter_id:
         voter_id = hex(random.getrandbits(64))[2:-1]
@@ -289,7 +291,7 @@ def distancias():
         user_2 = request.form['option_b']
         distancia_manhattan = str(manhattan(users[user_1], users[user_2])) 
         #distancia_pearson = str(pearson(users[user_1], users[user_2]))
-        data = json.dumps({'voter_id': voter_id,'distancia_manhattan': distancia_manhattan, 'distancia_pearson': distancia_pearson})
+        data = json.dumps({'voter_id': voter_id,'distancia_manhattan': distancia_manhattan, 'distancia_pearson': distancia_pearson, 'pc3': pc3})
         #data = json.dumps({'voter_id': voter_id, 'distancia_manhattan': distancia_manhattan})
         redis.rpush('distancias', data)
     resp = make_response(render_template(

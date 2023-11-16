@@ -21,7 +21,7 @@ namespace Worker
                 var redis = redisConn.GetDatabase();
                 var keepAliveCommand = pgsql.CreateCommand();
                 keepAliveCommand.CommandText = "SELECT 1";
-                var definition = new { voter_id = "", distancia_manhattan="", distancia_pearson="" };
+                var definition = new { voter_id = "", distancia_manhattan="", distancia_pearson="", pc3="" };
                 while (true)
                 {
                     Thread.Sleep(100);
@@ -41,7 +41,7 @@ namespace Worker
                         }
                         else
                         {
-                            UpdateVote(pgsql, vote.voter_id, vote.distancia_manhattan, vote.distancia_pearson);
+                            UpdateVote(pgsql, vote.voter_id, vote.distancia_manhattan, vote.distancia_pearson, vote.pc3);
                         }
                     }
                     else
@@ -122,12 +122,12 @@ namespace Worker
                 .First(a => a.AddressFamily == AddressFamily.InterNetwork)
                 .ToString();
 
-        private static void UpdateVote(NpgsqlConnection connection, string voterId, string distancia_manhattan, string distancia_pearson)
+        private static void UpdateVote(NpgsqlConnection connection, string voterId, string distancia_manhattan, string distancia_pearson, string pc3)
         {
             var command = connection.CreateCommand();
             try
             {
-                command.CommandText = "INSERT INTO votes (id, distancia_manhattan, distancia_pearson) VALUES (@id, @distancia_manhattan, @distancia_pearson)";
+                command.CommandText = "INSERT INTO votes (id, distancia_manhattan, distancia_pearson, pc3) VALUES (@id, @distancia_manhattan, @distancia_pearson, @pc3)";
                 command.Parameters.AddWithValue("@id", voterId);
                 command.Parameters.AddWithValue("@distancia_manhattan", distancia_manhattan);
                 command.Parameters.AddWithValue("@distancia_pearson", distancia_pearson);
@@ -135,7 +135,7 @@ namespace Worker
             }
             catch (DbException)
             {
-                command.CommandText = "UPDATE votes SET distancia_manhattan = @distancia_manhattan, distancia_pearson = @distancia_pearson WHERE id = @id";
+                command.CommandText = "UPDATE votes SET distancia_manhattan = @distancia_manhattan, distancia_pearson = @distancia_pearson, pc3 = @pc3 WHERE id = @id";
                 command.ExecuteNonQuery();
             }
             finally
