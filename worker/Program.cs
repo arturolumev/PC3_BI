@@ -132,6 +132,7 @@ namespace Worker
                 command.Parameters.AddWithValue("@id", voterId);
                 command.Parameters.AddWithValue("@distancia_manhattan", distancia_manhattan);
                 command.Parameters.AddWithValue("@distancia_pearson", distancia_pearson);
+                command.Parameters.AddWithValue("@distancia_pearson", pc3);
                 command.ExecuteNonQuery();
             }
             catch (DbException)
